@@ -1,0 +1,51 @@
+name: Build
+
+on:
+  # Runs every time that a pull request is made
+  pull_request:
+  # Runs every time that a commit is git pushed
+  push:
+  schedule:
+    # Runs every Sunday at 7:59 AM UTC
+    - cron: 59 7 * * 0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        MATRIX_BASE_SCRIPT: ['Xfce-32', 'Xfce-64', 'Xfce-ahs', 'flux32', 'flux64', 'kde']
+
+    env:
+      BASE_SCRIPT: ${{ matrix.MATRIX_BASE_SCRIPT }}
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - name: Provisioning (apt-get update)
+        run: sudo bin/provision-apt-get-update
+
+      - name: Provisioning (apt-get upgrade, master branch only)
+        run: sudo bin/provision-apt-get-upgrade
+        if: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: Provisioning (apt-get install)
+        run: sudo bin/provision-apt-get-install
+
+      - name: Creating the Remaster directory
+        run: mkdir -p Remaster
+
+      - name: Stage 0
+        run: ./build-iso --VERBOSE --user-default "defaults-$BASE_SCRIPT-github-00"
+
+      - name: Display the Stage 0 output file (used to set basic build parameters)
+        run: cat Output/stage-0.out
+
+      - name: Stage 1
+        run: ./build-iso --VERBOSE --user-default "defaults-$BASE_SCRIPT-github-01"
+
+      - name: Stage 2
+        run: ./build-iso --VERBOSE --user-default "defaults-$BASE_SCRIPT-github-02"
